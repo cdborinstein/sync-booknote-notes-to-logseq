@@ -30,7 +30,7 @@ def format_date(date_str):
     if not date_str or not date_str.strip():
         return ""
     date_str = date_str.strip()
-    for fmt in ("%Y-%m-%d", "%Y-%m-%d %H:%M:%S", "%m/%d/%Y", "%m/%d/%y"):
+    for fmt in ("%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%d", "%Y-%m-%d %H:%M:%S", "%m/%d/%Y", "%m/%d/%y"):
         try:
             return datetime.strptime(date_str, fmt).strftime("%Y-%m-%d")
         except ValueError:
@@ -58,6 +58,8 @@ def build_markdown(book, notes):
     date_started = format_date(book.get("date", ""))
     date_finished = format_date(book.get("finishDate", ""))
 
+    description = book.get("description", "").strip()
+
     lines = [
         f"- Book:: [[Books/{title}]]",
         f"- Author:: {author}",
@@ -65,10 +67,21 @@ def build_markdown(book, notes):
         f"- Rating:: {rating}",
         f"- Date Started:: {date_started}",
         f"- Date Finished:: {date_finished}",
+    ]
+
+    if description:
+        lines += [
+            "",
+            "---",
+            "",
+            f"- {description}",
+        ]
+
+    lines += [
         "",
         "---",
         "",
-        "- Notes",
+        "- ## Notes",
     ]
 
     sorted_notes = sorted(notes, key=lambda n: n.get("date", ""))
