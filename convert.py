@@ -11,8 +11,12 @@ from datetime import datetime
 from pathlib import Path
 
 # --- CONFIGURATION ---
-BOOKNOTE_ZIP_PATH = "/path/to/BookNote_Books_and_Notes_Export.zip"
-LOGSEQ_PAGES_DIR = "/path/to/logseq/graph/pages"
+# Create a config.py file with your local paths (see config.example.py).
+try:
+    from config import BOOKNOTE_ZIP_PATH, LOGSEQ_PAGES_DIR
+except ImportError:
+    BOOKNOTE_ZIP_PATH = "/path/to/BookNote_Books_and_Notes_Export.zip"
+    LOGSEQ_PAGES_DIR = "/path/to/logseq/graph/pages"
 # ---------------------
 
 
@@ -74,7 +78,7 @@ def build_markdown(book, notes):
             "",
             "---",
             "",
-            f"- {description}",
+            f"- **Description** {description}",
         ]
 
     lines += [
