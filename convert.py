@@ -100,7 +100,7 @@ def build_markdown(book, notes):
         first_line = content_lines[0]
         if tag == "quote":
             first_line = f"> {first_line}"
-        lines.append(f"  - {logseq_tag} {first_line}" if logseq_tag else f"  - {first_line}")
+        lines.append(f"  - {first_line} {logseq_tag}" if logseq_tag else f"  - {first_line}")
         for extra_line in content_lines[1:]:
             lines.append(f"    {extra_line}")
         lines.append(f"    - Date:: {note_date}")
