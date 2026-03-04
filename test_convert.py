@@ -78,6 +78,7 @@ def test_content_format():
         assert "#booknote-quote" in content, "quote tag missing"
         assert "#booknote-reflect" in content, "reflect tag missing"
         assert "#booknote-distill" in content, "distill tag missing"
+        assert "#booknote-quote >" in content, "quote blockquote prefix missing"
 
         print("PASS: content format correct")
     finally:
