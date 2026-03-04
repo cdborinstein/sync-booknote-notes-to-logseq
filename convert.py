@@ -53,24 +53,22 @@ def read_csv_from_zip(zip_ref, filename):
     return list(reader)
 
 
-def build_markdown(book, notes):
-    """Build the Logseq markdown content for a single book and its notes."""
-    title = book["title"].strip()
+def build_book_page(book, title):
+    """Build the main book page content (metadata + link to notes sub-page)."""
     author = book.get("author", "").strip()
     status = book.get("status", "").strip()
     rating = book.get("rating", "").strip() or "Unrated"
     date_started = format_date(book.get("date", ""))
     date_finished = format_date(book.get("finishDate", ""))
-
     description = book.get("description", "").strip()
 
     lines = [
-        f"- Book:: [[Books/{title}]]",
         f"- Author:: {author}",
         f"- Status:: {status}",
         f"- Rating:: {rating}",
         f"- Date Started:: {date_started}",
         f"- Date Finished:: {date_finished}",
+        f"- Notes:: [[Books/{title}/Notes]]",
     ]
 
     if description:
@@ -81,12 +79,12 @@ def build_markdown(book, notes):
             f"- **Description** {description}",
         ]
 
-    lines += [
-        "",
-        "---",
-        "",
-        "- ## Notes",
-    ]
+    return "\n".join(lines) + "\n"
+
+
+def build_notes_page(notes):
+    """Build the notes sub-page content for a single book."""
+    lines = ["- ## Notes"]
 
     sorted_notes = sorted(notes, key=lambda n: n.get("date", ""))
 
@@ -145,8 +143,9 @@ def main(zip_path=None, output_dir=None):
             if bid:
                 notes_by_book.setdefault(bid, []).append(note)
 
-        created = 0
-        overwritten = 0
+        book_pages_created = 0
+        notes_pages_overwritten = 0
+        notes_pages_created = 0
         total_notes = 0
 
         for book in books:
@@ -157,22 +156,27 @@ def main(zip_path=None, output_dir=None):
 
             title = book["title"].strip()
             safe_title = sanitize_filename(title)
-            filename = f"Books___{safe_title}.md"
-            filepath = output_path / filename
 
-            if filepath.exists():
-                overwritten += 1
+            # Main book page — only write if it doesn't already exist
+            book_filepath = output_path / f"Books___{safe_title}.md"
+            if not book_filepath.exists():
+                book_filepath.write_text(build_book_page(book, title), encoding="utf-8")
+                book_pages_created += 1
+
+            # Notes sub-page — always overwrite
+            notes_filepath = output_path / f"Books___{safe_title}___Notes.md"
+            if notes_filepath.exists():
+                notes_pages_overwritten += 1
             else:
-                created += 1
-
-            md = build_markdown(book, book_notes)
-            filepath.write_text(md, encoding="utf-8")
+                notes_pages_created += 1
+            notes_filepath.write_text(build_notes_page(book_notes), encoding="utf-8")
             total_notes += len(book_notes)
 
-        books_processed = created + overwritten
+        books_processed = notes_pages_created + notes_pages_overwritten
         print(f"Books processed: {books_processed}")
-        print(f"Files created: {created}")
-        print(f"Files overwritten: {overwritten}")
+        print(f"Book pages created: {book_pages_created}")
+        print(f"Notes pages created: {notes_pages_created}")
+        print(f"Notes pages overwritten: {notes_pages_overwritten}")
         print(f"Total notes written: {total_notes}")
 
     finally:
