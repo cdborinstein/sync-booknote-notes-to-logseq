@@ -54,11 +54,12 @@ def read_csv_from_zip(zip_ref, filename):
 
 
 def build_markdown(book, notes):
-    """Build the Logseq markdown content for a single book and its notes."""
+    """Build the Logseq markdown content for a book's notes subpage."""
     title = book["title"].strip()
     author = book.get("author", "").strip()
     status = book.get("status", "").strip()
-    rating = book.get("rating", "").strip() or "Unrated"
+    rating_raw = book.get("rating", "").strip()
+    rating = f"{rating_raw}/5" if rating_raw else "Unrated"
     date_started = format_date(book.get("date", ""))
     date_finished = format_date(book.get("finishDate", ""))
 
@@ -95,13 +96,31 @@ def build_markdown(book, notes):
         logseq_tag = f"#booknote-{tag}" if tag else ""
         content = note.get("plain_text_content", "").strip()
         note_date = format_date(note.get("date", ""))
+        is_quote = tag.lower() == "quote"
+
+        # Inline the tag and date on a single trailing line, e.g.
+        # "#booknote-quote 2025-01-15".
+        footer = " ".join(p for p in (logseq_tag, note_date) if p)
 
         content_lines = content.split("\n")
-        first_line = content_lines[0]
-        lines.append(f"  - {logseq_tag} {first_line}" if logseq_tag else f"  - {first_line}")
-        for extra_line in content_lines[1:]:
-            lines.append(f"    {extra_line}")
-        lines.append(f"    - Date:: {note_date}")
+
+        if is_quote:
+            # Prefix every line with "> " so it renders as a markdown blockquote.
+            lines.append(f"  - > {content_lines[0]}")
+            for extra_line in content_lines[1:]:
+                lines.append(f"    > {extra_line}")
+            # Blank line separates the blockquote from the footer, otherwise the
+            # footer would get pulled into the blockquote when rendered.
+            if footer:
+                lines.append("")
+                lines.append(f"    {footer}")
+        else:
+            # Non-quote notes: inline the footer on the first line of content
+            # so it sits on the parent block (not a child continuation line).
+            first_line = f"{content_lines[0]} {footer}".rstrip() if footer else content_lines[0]
+            lines.append(f"  - {first_line}")
+            for extra_line in content_lines[1:]:
+                lines.append(f"    {extra_line}")
 
     return "\n".join(lines) + "\n"
 
@@ -145,6 +164,7 @@ def main(zip_path=None, output_dir=None):
 
         created = 0
         overwritten = 0
+        book_pages_created = 0
         total_notes = 0
 
         for book in books:
@@ -155,22 +175,33 @@ def main(zip_path=None, output_dir=None):
 
             title = book["title"].strip()
             safe_title = sanitize_filename(title)
-            filename = f"Books___{safe_title}.md"
-            filepath = output_path / filename
 
-            if filepath.exists():
+            notes_filename = f"Books___{safe_title}___notes.md"
+            notes_filepath = output_path / notes_filename
+            book_filename = f"Books___{safe_title}.md"
+            book_filepath = output_path / book_filename
+
+            if notes_filepath.exists():
                 overwritten += 1
             else:
                 created += 1
 
             md = build_markdown(book, book_notes)
-            filepath.write_text(md, encoding="utf-8")
+            notes_filepath.write_text(md, encoding="utf-8")
             total_notes += len(book_notes)
+
+            # Create the main book page as a blank reflections canvas, but
+            # only if it doesn't already exist — we never want to overwrite
+            # reflections the user has already written there.
+            if not book_filepath.exists():
+                book_filepath.write_text("", encoding="utf-8")
+                book_pages_created += 1
 
         books_processed = created + overwritten
         print(f"Books processed: {books_processed}")
-        print(f"Files created: {created}")
-        print(f"Files overwritten: {overwritten}")
+        print(f"Notes pages created: {created}")
+        print(f"Notes pages overwritten: {overwritten}")
+        print(f"Blank book pages created: {book_pages_created}")
         print(f"Total notes written: {total_notes}")
 
     finally:
